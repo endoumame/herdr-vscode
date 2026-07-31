@@ -1,0 +1,403 @@
+{
+  "name": "herdr-vscode",
+  "displayName": "herdr Review",
+  "description": "Write inline review comments in VS Code — on PR diffs or ordinary files — and send them to a running herdr agent.",
+  "version": "0.1.0",
+  "publisher": "herdr",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/endoumame/herdr-vscode.git"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "SCM Providers"
+  ],
+  "keywords": [
+    "herdr",
+    "code review",
+    "pull request",
+    "ai agent"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "This extension executes the herdr CLI, whose path can come from workspace settings."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "herdr.createComment",
+        "title": "Queue Comment",
+        "category": "herdr",
+        "icon": "$(add)"
+      },
+      {
+        "command": "herdr.createAndSend",
+        "title": "Queue Comment and Send All",
+        "category": "herdr",
+        "icon": "$(send)"
+      },
+      {
+        "command": "herdr.commentSelection",
+        "title": "Comment on Selection",
+        "category": "herdr",
+        "icon": "$(comment-add)"
+      },
+      {
+        "command": "herdr.sendAll",
+        "title": "Send Queued Comments to Agent",
+        "category": "herdr",
+        "icon": "$(send)"
+      },
+      {
+        "command": "herdr.sendOne",
+        "title": "Send This Comment",
+        "category": "herdr",
+        "icon": "$(send)"
+      },
+      {
+        "command": "herdr.clearAll",
+        "title": "Clear Queued Comments",
+        "category": "herdr",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "herdr.copyExport",
+        "title": "Copy Queued Comments to Clipboard",
+        "category": "herdr",
+        "icon": "$(clippy)"
+      },
+      {
+        "command": "herdr.pickAgent",
+        "title": "Select Target Agent",
+        "category": "herdr",
+        "icon": "$(person)"
+      },
+      {
+        "command": "herdr.refreshAgents",
+        "title": "Refresh Agents",
+        "category": "herdr",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "herdr.focusAgent",
+        "title": "Focus Agent Pane",
+        "category": "herdr",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "herdr.showLog",
+        "title": "Show Log",
+        "category": "herdr",
+        "icon": "$(output)"
+      },
+      {
+        "command": "herdr.editComment",
+        "title": "Edit",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "herdr.saveComment",
+        "title": "Save"
+      },
+      {
+        "command": "herdr.cancelEditComment",
+        "title": "Cancel"
+      },
+      {
+        "command": "herdr.deleteComment",
+        "title": "Delete Comment",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "herdr.deleteThread",
+        "title": "Discard Thread",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "herdr.revealComment",
+        "title": "Reveal Comment"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        { "command": "herdr.createComment", "when": "false" },
+        { "command": "herdr.createAndSend", "when": "false" },
+        { "command": "herdr.sendOne", "when": "false" },
+        { "command": "herdr.editComment", "when": "false" },
+        { "command": "herdr.saveComment", "when": "false" },
+        { "command": "herdr.cancelEditComment", "when": "false" },
+        { "command": "herdr.deleteComment", "when": "false" },
+        { "command": "herdr.deleteThread", "when": "false" },
+        { "command": "herdr.revealComment", "when": "false" }
+      ],
+      "comments/commentThread/context": [
+        {
+          "command": "herdr.createComment",
+          "group": "inline@1",
+          "when": "commentController == herdr.review"
+        },
+        {
+          "command": "herdr.createAndSend",
+          "group": "inline@2",
+          "when": "commentController == herdr.review"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "herdr.sendAll",
+          "group": "navigation@1",
+          "when": "commentController == herdr.review && herdr.queueNotEmpty"
+        },
+        {
+          "command": "herdr.deleteThread",
+          "group": "navigation@2",
+          "when": "commentController == herdr.review"
+        }
+      ],
+      "comments/comment/title": [
+        {
+          "command": "herdr.editComment",
+          "group": "group@1",
+          "when": "commentController == herdr.review && comment == herdr.draft"
+        },
+        {
+          "command": "herdr.deleteComment",
+          "group": "group@2",
+          "when": "commentController == herdr.review && comment == herdr.draft"
+        }
+      ],
+      "comments/comment/context": [
+        {
+          "command": "herdr.cancelEditComment",
+          "group": "inline@1",
+          "when": "commentController == herdr.review"
+        },
+        {
+          "command": "herdr.saveComment",
+          "group": "inline@2",
+          "when": "commentController == herdr.review"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "herdr.commentSelection",
+          "group": "herdr@1",
+          "when": "editorTextFocus"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "herdr.sendAll",
+          "when": "view == herdr.queue",
+          "group": "navigation@1"
+        },
+        {
+          "command": "herdr.pickAgent",
+          "when": "view == herdr.queue",
+          "group": "navigation@2"
+        },
+        {
+          "command": "herdr.clearAll",
+          "when": "view == herdr.queue",
+          "group": "navigation@3"
+        },
+        {
+          "command": "herdr.copyExport",
+          "when": "view == herdr.queue",
+          "group": "1_more@1"
+        },
+        {
+          "command": "herdr.refreshAgents",
+          "when": "view == herdr.queue",
+          "group": "1_more@2"
+        },
+        {
+          "command": "herdr.showLog",
+          "when": "view == herdr.queue",
+          "group": "1_more@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "herdr.sendOne",
+          "when": "view == herdr.queue && viewItem == herdr.queuedComment",
+          "group": "inline@1"
+        },
+        {
+          "command": "herdr.deleteComment",
+          "when": "view == herdr.queue && viewItem == herdr.queuedComment",
+          "group": "inline@2"
+        }
+      ]
+    },
+    "views": {
+      "scm": [
+        {
+          "id": "herdr.queue",
+          "name": "herdr Review Queue",
+          "icon": "$(comment-discussion)",
+          "contextualTitle": "herdr"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "herdr.queue",
+        "contents": "No queued comments.\n\nSelect lines in any editor and press the comment shortcut, or use the gutter + in a pull request diff.\n[Select Target Agent](command:herdr.pickAgent)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "herdr.commentSelection",
+        "key": "ctrl+alt+/",
+        "mac": "cmd+alt+/",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "herdr.sendAll",
+        "key": "ctrl+alt+enter",
+        "mac": "cmd+alt+enter",
+        "when": "herdr.queueNotEmpty && !terminalFocus"
+      },
+      {
+        "command": "herdr.createComment",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "commentEditorFocused && commentController == herdr.review"
+      }
+    ],
+    "configuration": {
+      "title": "herdr Review",
+      "properties": {
+        "herdr.binPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Absolute path to the `herdr` binary. When empty the extension tries `HERDR_BIN_PATH`, then `PATH`, then common install directories, then a login-shell probe."
+        },
+        "herdr.session": {
+          "type": "string",
+          "default": "",
+          "description": "Named herdr session (passed as HERDR_SESSION). Empty uses the default session."
+        },
+        "herdr.socketPath": {
+          "type": "string",
+          "default": "",
+          "description": "Low-level socket path override (passed as HERDR_SOCKET_PATH). Supports ~. Leave empty unless you know you need it."
+        },
+        "herdr.extraArgs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Extra arguments inserted before every herdr subcommand."
+        },
+        "herdr.commandTimeoutMs": {
+          "type": "number",
+          "default": 10000,
+          "minimum": 1000,
+          "description": "Timeout for each herdr CLI invocation, in milliseconds."
+        },
+        "herdr.focusAgentAfterSend": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Run `herdr agent focus` after a successful send so you can review the pasted text and press Enter yourself."
+        },
+        "herdr.snippetMaxLines": {
+          "type": "number",
+          "default": 40,
+          "minimum": 0,
+          "description": "Maximum snippet lines per comment. Longer selections are truncated with an elision marker. 0 disables snippets."
+        },
+        "herdr.snippetPrefix": {
+          "type": "string",
+          "default": "auto",
+          "enum": ["auto", "diff", "none"],
+          "enumDescriptions": [
+            "Diff prefixes (+ / -) on diff editors, no prefix on ordinary files",
+            "Always prefix with + or -",
+            "Never prefix"
+          ]
+        },
+        "herdr.bracketedPaste": {
+          "type": "string",
+          "default": "always",
+          "enum": ["always", "never"],
+          "markdownDescription": "Wrap the payload in `ESC[200~` / `ESC[201~` before handing it to `herdr pane send-text`. Set to `never` if your herdr version already wraps server-side (symptom: a literal `[200~` shows up in the agent prompt)."
+        },
+        "herdr.agentMatchStrategy": {
+          "type": "string",
+          "default": "cwd",
+          "enum": ["cwd", "any"],
+          "enumDescriptions": [
+            "Prefer agents whose working directory matches this workspace or git repository",
+            "Offer every running agent"
+          ]
+        },
+        "herdr.commentingSchemes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "file",
+            "review",
+            "pr",
+            "githubpr",
+            "gitpr",
+            "githubcommit",
+            "git",
+            "vscode-vfs",
+            "untitled"
+          ],
+          "description": "URI schemes on which the herdr gutter comment affordance is offered."
+        },
+        "herdr.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the herdr target agent and queue count in the status bar."
+        },
+        "herdr.clearThreadsAfterSend": {
+          "type": "boolean",
+          "default": true,
+          "description": "Dispose comment threads from the editor after a successful send."
+        },
+        "herdr.preamble": {
+          "type": "string",
+          "default": "",
+          "description": "Optional text prepended to the payload, separated by a blank line. Empty matches herdr-reviewr byte for byte."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile": "npm run check-types && node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src test",
+    "pretest": "tsc -p tsconfig.test.json",
+    "test": "node --test \"out-test/test/unit/*.test.js\"",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.1",
+    "eslint": "^9.0.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {}
+}
