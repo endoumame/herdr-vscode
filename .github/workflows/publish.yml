@@ -1,0 +1,67 @@
+name: Publish
+
+# Publishes to the Visual Studio Marketplace when a v* tag is pushed, and
+# attaches the VSIX to a GitHub release of the same name.
+#
+# Requires a repository secret named VSCE_PAT: an Azure DevOps personal access
+# token scoped to Marketplace > Manage. See "Publishing" in README.md.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and verify the VSIX without publishing
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run check-types
+
+      - run: npm run lint
+
+      - run: npm test
+
+      # The tag is the source of truth for the version, so a mismatch with
+      # package.json has to fail here rather than ship the wrong version.
+      - name: Verify tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          manifest="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$manifest" ]; then
+            echo "::error::tag v$tag does not match package.json version $manifest"
+            exit 1
+          fi
+
+      - name: Package
+        run: npm run package
+
+      - name: Publish to the Visual Studio Marketplace
+        if: startsWith(github.ref, 'refs/tags/v') && inputs.dry_run != true
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --packagePath *.vsix
+
+      - name: Attach the VSIX to a GitHub release
+        if: startsWith(github.ref, 'refs/tags/v') && inputs.dry_run != true
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '*.vsix'
+          generate_release_notes: true
