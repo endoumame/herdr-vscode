@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Esc` closes the comment editor while it has focus. An edit in progress
+  reverts, a thread opened but never filled disappears, and a thread holding
+  queued comments collapses — nothing leaves the queue.
+
+### Changed
+
+- The payload sent to the agent now ends with a newline, so consecutive sends
+  no longer run together on one line of the agent's input. It is inserted
+  inside the bracketed-paste markers, so it is still not the Enter that would
+  submit the review.
+- **Discard Thread** now appears in a thread's header only once that thread
+  holds more than one comment. On a single-comment thread it duplicated the
+  comment's own delete action, showing two trash cans for one comment.
+- The Marketplace badge URLs and the `code --install-extension` line in
+  `README.md` now use the `endoumame` publisher, matching `package.json`.
+
+### Known issues
+
+- On a line long enough for VS Code to wrap it, the gutter `+` is drawn once
+  per wrapped row rather than once per line. It is still a single commenting
+  position, and an extension cannot change it: VS Code draws the affordance
+  with `linesDecorationsClassName`, which paints on every visual row. Tracked
+  upstream as [microsoft/vscode#158837](https://github.com/microsoft/vscode/issues/158837).
+
 ## [0.1.0] - 2026-07-31
 
 First public release.

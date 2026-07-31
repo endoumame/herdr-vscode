@@ -4,8 +4,8 @@ Review code where you read it. Write inline comments in VS Code — on pull
 request diffs or on ordinary files — queue them up, and hand the whole batch to
 an AI agent running in [herdr](https://herdr.dev) with one keystroke.
 
-[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/herdr.herdr-vscode?label=marketplace&color=0098FF)](https://marketplace.visualstudio.com/items?itemName=herdr.herdr-vscode)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/herdr.herdr-vscode?label=installs&color=0098FF)](https://marketplace.visualstudio.com/items?itemName=herdr.herdr-vscode)
+[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/endoumame.herdr-vscode?label=marketplace&color=0098FF)](https://marketplace.visualstudio.com/items?itemName=endoumame.herdr-vscode)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/endoumame.herdr-vscode?label=installs&color=0098FF)](https://marketplace.visualstudio.com/items?itemName=endoumame.herdr-vscode)
 [![CI](https://img.shields.io/github/actions/workflow/status/endoumame/herdr-vscode/ci.yml?branch=main&label=CI)](https://github.com/endoumame/herdr-vscode/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -79,7 +79,7 @@ settings.
    (`Ctrl+Shift+X`), or run:
 
    ```bash
-   code --install-extension herdr.herdr-vscode
+   code --install-extension endoumame.herdr-vscode
    ```
 
 2. **Start an agent in herdr** in the repository you are reviewing. The status
@@ -103,9 +103,14 @@ extension and the GitHub Pull Requests extension offer a comment provider
 there, so VS Code will ask which one you meant — pick **herdr**. The keyboard
 shortcut skips that step, which is why it is the recommended route.
 
-Queued comments stay visible in the editor as collapsed threads. Use the
-thread's **Edit** and **Delete Comment** actions to revise one, or **Discard
-Thread** to drop it.
+Press **`Esc`** to close the comment editor. An edit in progress reverts to
+what is queued, a thread you opened but never filled disappears, and a thread
+that already holds comments collapses — nothing leaves the queue.
+
+Queued comments stay visible in the editor as collapsed threads. Use each
+comment's **Edit** and **Delete Comment** actions to revise or drop it. Once a
+thread holds more than one comment, a **Discard Thread** action appears in its
+header to drop them all at once.
 
 ### Sending
 
@@ -113,6 +118,11 @@ Thread** to drop it.
 clicking the status bar item. The extension runs `herdr pane send-text`, which
 pastes the payload into the agent's input **without pressing Enter**, matching
 herdr-reviewr. It then focuses that pane so you can review and submit.
+
+The payload ends with a newline, so a second send starts on its own line
+instead of running on from the end of the first. The newline goes inside the
+bracketed-paste markers, where a terminal inserts it literally rather than
+treating it as the Enter that would submit the review.
 
 If a send fails — no agents running, herdr not found, a timeout — nothing is
 lost. The error offers a way out that fits the cause (retry, refresh the agent
@@ -175,8 +185,8 @@ All commands are under the **herdr** category in the Command Palette
 | herdr: Clear Queued Comments | |
 | herdr: Show Log | |
 
-`Ctrl+Enter` (`Cmd+Enter`) queues the comment you are typing, and is active
-only while the herdr comment editor has focus.
+`Ctrl+Enter` (`Cmd+Enter`) queues the comment you are typing and `Esc` closes
+the editor. Both are active only while the herdr comment editor has focus.
 
 ## Settings
 
@@ -192,7 +202,7 @@ only while the herdr comment editor has focus.
 | `herdr.snippetPrefix` | `"auto"` | `+` / `-` on diffs, nothing on ordinary files. `diff` always prefixes, `none` never does. |
 | `herdr.bracketedPaste` | `"always"` | Wrap the payload in `ESC[200~` / `ESC[201~`. See troubleshooting. |
 | `herdr.agentMatchStrategy` | `"cwd"` | `"any"` offers every running agent. |
-| `herdr.commentingSchemes` | 9 schemes | URI schemes where the gutter affordance appears. |
+| `herdr.commentingSchemes` | 9 schemes | URI schemes where the gutter affordance appears. `[]` turns the gutter off entirely; the keyboard shortcut keeps working. |
 | `herdr.showStatusBar` | `true` | Show the target agent and queue count in the status bar. |
 | `herdr.clearThreadsAfterSend` | `true` | Remove threads from the editor after a successful send. |
 | `herdr.preamble` | `""` | Optional framing text. Empty matches herdr-reviewr byte for byte. |
@@ -216,6 +226,19 @@ but not here, you are probably on a named session — set `herdr.session`.
 rides as a single argv entry, and Linux caps one entry at 128 KiB regardless of
 the total; the warning appears from 100 KB. Send in smaller batches, or lower
 `herdr.snippetMaxLines`.
+
+**The gutter `+` repeats down a wrapped line.** A long line that VS Code wraps
+gets one `+` per wrapped row, which looks like several separate places to
+comment. It is one commenting position: clicking any of them opens a single
+thread on that one line. This is not something an extension can change — VS
+Code draws the affordance with Monaco's `linesDecorationsClassName`, which
+paints on every visual row of a wrapped line, and the option that would limit
+it to the first row (`firstLineDecorationClassName`) is not the one the
+comments feature uses. See
+[microsoft/vscode#158837](https://github.com/microsoft/vscode/issues/158837)
+for the upstream request. Use `Ctrl+Alt+/` instead, or set
+`herdr.commentingSchemes` to `[]` to remove the gutter affordance and drive the
+extension entirely from the keyboard.
 
 **Nothing to send to, but you still want the comments.** *herdr: Copy Queued
 Comments to Clipboard* produces the exact payload.
@@ -329,10 +352,10 @@ Actions tab with *dry run* enabled to rehearse without publishing.
 
 ### Checklist for the first release
 
-- [ ] `publisher` in `package.json` matches a publisher ID you own.
-- [ ] Every `herdr.herdr-vscode` in this README — the badge URLs, the
-      Marketplace links and the `code --install-extension` line — uses that
-      same ID.
+- [ ] `publisher` in `package.json` matches a publisher ID you own
+      (currently `endoumame`). If you change it, every `endoumame.herdr-vscode`
+      in this README — the badge URLs, the Marketplace links and the
+      `code --install-extension` line — has to change with it.
 - [ ] `version` and the top `CHANGELOG.md` entry agree.
 - [ ] `npm run package:ls` shows no source, tests or secrets.
 - [ ] The VSIX installs and works in a clean VS Code window.

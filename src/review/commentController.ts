@@ -8,6 +8,24 @@ import type { CommentQueue, QueuedComment } from './queue.js';
 
 const CONTROLLER_ID = 'herdr.review';
 
+/**
+ * A thread's contextValue, which drives the `when` clauses of its title menu.
+ *
+ * Every comment already carries its own delete action, so on a single-comment
+ * thread a "Discard Thread" button in the header is a second trash can that
+ * does the same thing. It only earns its place once there is more than one
+ * comment to discard at once.
+ */
+const THREAD_SINGLE = 'herdr.thread';
+const THREAD_MULTI = 'herdr.threadMulti';
+
+function tagThread(thread: vscode.CommentThread): void {
+	thread.contextValue = thread.comments.length > 1 ? THREAD_MULTI : THREAD_SINGLE;
+}
+
+/** VS Code's own Escape handler for comment widgets. See `closeEditors`. */
+const HIDE_COMMENT_COMMAND = 'workbench.action.hideComment';
+
 /** A comment we put in a thread, tagged with the queue entry it mirrors. */
 interface HerdrComment extends vscode.Comment {
 	queueId: string;
@@ -79,7 +97,7 @@ export class HerdrCommentController implements vscode.Disposable {
 		thread.canReply = true;
 		thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
 		thread.label = `herdr · ${formatLocation(loc)}`;
-		thread.contextValue = 'herdr.thread';
+		tagThread(thread);
 		this.pendingEmpty.add(thread);
 	}
 
@@ -122,11 +140,46 @@ export class HerdrCommentController implements vscode.Disposable {
 		// Reassign rather than push: mutating the array does not repaint.
 		thread.comments = [...thread.comments, comment];
 		thread.label = `herdr · ${formatLocation(captured.location)}`;
-		thread.contextValue = 'herdr.thread';
+		tagThread(thread);
 		thread.collapsibleState = vscode.CommentThreadCollapsibleState.Collapsed;
 
 		this.log.debug(`queued ${formatLocation(captured.location)}`);
 		return captured;
+	}
+
+	/**
+	 * Escape while a herdr comment editor has focus.
+	 *
+	 * VS Code gives the command no argument, and there is no context key for
+	 * "the thread you are typing in", so this closes every editor we own rather
+	 * than guessing. That is cheap and never destructive: an edit in progress
+	 * reverts to what is queued, a thread the shortcut opened but never filled
+	 * disappears, and a thread with queued comments merely collapses. Nothing
+	 * leaves the queue.
+	 *
+	 * VS Code binds Escape to `workbench.action.hideComment` at EditorContrib
+	 * weight, and an extension keybinding outranks that, so this has to hand
+	 * off at the end rather than replace it — otherwise a thread opened from
+	 * the gutter, which we never see, would lose its Escape.
+	 */
+	async closeEditors(): Promise<void> {
+		for (const thread of this.threadsById.values()) {
+			for (const comment of thread.comments) {
+				if (comment.mode === vscode.CommentMode.Editing) {
+					this.cancelEdit(comment);
+				}
+			}
+			thread.collapsibleState = vscode.CommentThreadCollapsibleState.Collapsed;
+		}
+		this.disposeAbandoned();
+
+		try {
+			await vscode.commands.executeCommand(HIDE_COMMENT_COMMAND);
+		} catch (err) {
+			// A renamed or removed built-in must not turn Escape into an error
+			// notification; our own cleanup has already run.
+			this.log.debug(`${HIDE_COMMENT_COMMAND} failed: ${String(err)}`);
+		}
 	}
 
 	editComment(comment: vscode.Comment): void {
@@ -204,6 +257,7 @@ export class HerdrCommentController implements vscode.Disposable {
 			thread.dispose();
 		} else {
 			thread.comments = remaining;
+			tagThread(thread);
 		}
 	}
 
