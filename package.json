@@ -5,22 +5,35 @@
   "version": "0.1.0",
   "publisher": "herdr",
   "license": "MIT",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#1B1F2E",
+    "theme": "dark"
+  },
+  "pricing": "Free",
   "repository": {
     "type": "git",
     "url": "https://github.com/endoumame/herdr-vscode.git"
   },
+  "homepage": "https://github.com/endoumame/herdr-vscode#readme",
+  "bugs": {
+    "url": "https://github.com/endoumame/herdr-vscode/issues"
+  },
+  "qna": "https://github.com/endoumame/herdr-vscode/issues",
   "engines": {
     "vscode": "^1.90.0"
   },
   "categories": [
-    "Other",
-    "SCM Providers"
+    "SCM Providers",
+    "AI",
+    "Other"
   ],
   "keywords": [
     "herdr",
     "code review",
     "pull request",
-    "ai agent"
+    "ai agent",
+    "terminal"
   ],
   "extensionKind": [
     "workspace"
@@ -387,7 +400,10 @@
     "lint": "eslint src test",
     "pretest": "tsc -p tsconfig.test.json",
     "test": "node --test \"out-test/test/unit/*.test.js\"",
-    "package": "vsce package"
+    "icon": "node scripts/generate-icon.mjs",
+    "package": "vsce package",
+    "package:ls": "vsce ls",
+    "publish": "vsce publish"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

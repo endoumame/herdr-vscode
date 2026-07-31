@@ -1,9 +1,14 @@
+# Everything the Marketplace does not need. A published VSIX should contain
+# only LICENSE, README, CHANGELOG, package.json, images/icon.png and dist/.
+# Check with `npm run package:ls` before publishing.
+
 .vscode/**
 .vscode-test/**
 out/**
 out-test/**
 src/**
 test/**
+scripts/**
 node_modules/**
 **/*.map
 **/tsconfig*.json
@@ -11,3 +16,5 @@ eslint.config.mjs
 esbuild.js
 .gitignore
 .github/**
+*.vsix
+**/.DS_Store
