@@ -247,133 +247,6 @@ Comments to Clipboard* produces the exact payload.
 records the exact payload handed to herdr, byte count included, along with
 every failure.
 
-## Publishing to the Visual Studio Marketplace
-
-You only need this section if you are releasing the extension yourself.
-
-### One-time setup
-
-1. **Create an Azure DevOps organization.** Sign in at
-   [dev.azure.com](https://dev.azure.com/) with the Microsoft account you want
-   to own the extension. The Marketplace authenticates through Azure DevOps.
-
-2. **Create a Personal Access Token.** In Azure DevOps, *User settings* →
-   *Personal access tokens* → *New Token*:
-
-   | Field | Value |
-   |---|---|
-   | Organization | **All accessible organizations** (required — a single-org token is rejected) |
-   | Scopes | *Custom defined* → **Marketplace → Manage** |
-   | Expiration | up to 1 year |
-
-   Copy the token now; Azure DevOps will not show it again.
-
-3. **Create a publisher** at
-   [marketplace.visualstudio.com/manage](https://marketplace.visualstudio.com/manage/createpublisher).
-   The publisher **ID** is what appears in the extension's identifier and
-   cannot be changed later.
-
-4. **Point the manifest at your publisher.** The `publisher` field in
-   `package.json` must match that ID exactly, or publishing fails with
-   `unauthorized`:
-
-   ```jsonc
-   // package.json
-   "publisher": "your-publisher-id",
-   ```
-
-   The extension is then identified as `your-publisher-id.herdr-vscode`. Update
-   the Marketplace badge URLs at the top of this file to match.
-
-5. **Store the token** so `vsce` can use it:
-
-   ```bash
-   npx vsce login your-publisher-id   # prompts for the PAT, stores it in the OS keychain
-   ```
-
-   In CI, set the `VSCE_PAT` environment variable instead of logging in.
-
-### Pre-flight checks
-
-```bash
-npm ci
-npm run check-types      # tsc --noEmit
-npm run lint
-npm test
-npm run package          # -> herdr-vscode-<version>.vsix
-npm run package:ls       # exactly what the VSIX will contain
-```
-
-Install the VSIX into a real editor and exercise it before you ship it:
-
-```bash
-code --install-extension herdr-vscode-0.1.0.vsix
-```
-
-`npm run package` runs `vscode:prepublish`, which type-checks, lints and builds
-a production bundle. It fails on anything the Marketplace would reject, so a
-green `package` is a good proxy for a valid submission.
-
-### Publish
-
-Bump the version, update `CHANGELOG.md`, then:
-
-```bash
-npm run publish          # publishes the current version in package.json
-```
-
-`vsce` can also do the bump for you, committing and tagging in one step (this
-requires a clean working tree):
-
-```bash
-npx vsce publish patch   # 0.1.0 -> 0.1.1, commits and tags v0.1.1
-npx vsce publish minor   # 0.1.0 -> 0.2.0
-```
-
-Validation takes a few minutes. The listing then appears at
-`https://marketplace.visualstudio.com/items?itemName=<publisher>.herdr-vscode`,
-and `npx vsce show <publisher>.herdr-vscode` reports the published state from
-the terminal.
-
-### Releasing from CI
-
-`.github/workflows/publish.yml` does all of the above when a `v*` tag is
-pushed. Add your PAT as a repository secret named **`VSCE_PAT`**
-(*Settings* → *Secrets and variables* → *Actions*), then:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-The workflow verifies that the tag matches `package.json`, runs the checks,
-publishes, and attaches the VSIX to a GitHub release. Run it manually from the
-Actions tab with *dry run* enabled to rehearse without publishing.
-
-### Checklist for the first release
-
-- [ ] `publisher` in `package.json` matches a publisher ID you own
-      (currently `endoumame`). If you change it, every `endoumame.herdr-vscode`
-      in this README — the badge URLs, the Marketplace links and the
-      `code --install-extension` line — has to change with it.
-- [ ] `version` and the top `CHANGELOG.md` entry agree.
-- [ ] `npm run package:ls` shows no source, tests or secrets.
-- [ ] The VSIX installs and works in a clean VS Code window.
-- [ ] A demo GIF is committed to `images/` and linked below the intro — the
-      Marketplace listing renders it, and it is the single biggest thing you
-      can do for the listing. Relative links are resolved against the
-      repository's default branch, so commit it before publishing.
-
-### Publishing to Open VSX (optional)
-
-VSCodium, Cursor, Windsurf and Gitpod use [Open VSX](https://open-vsx.org/)
-rather than the Microsoft Marketplace. Publishing there is a separate account
-and one extra command against the same VSIX:
-
-```bash
-npx ovsx publish herdr-vscode-0.1.0.vsix -p <open-vsx-token>
-```
-
 ## Development
 
 ```bash
@@ -392,6 +265,41 @@ The format-critical logic (`src/review/export.ts`, `location.ts`,
 the `vscode` module — enforced by an ESLint rule — so it runs under plain
 `node --test`. Changes to the payload format belong there, with a test, because
 that format is a contract with herdr-reviewr.
+
+## Releasing
+
+A `v*` tag is what ships a release. `.github/workflows/publish.yml` runs the
+checks, publishes to the Marketplace with the `VSCE_PAT` repository secret, and
+creates the GitHub release with the VSIX attached and generated notes. The tag
+must match `version` in `package.json` — the workflow fails on a mismatch
+rather than shipping the wrong version.
+
+1. Bump `version` in `package.json` and `package-lock.json`. Do this by hand or
+   with `npm version <ver> --no-git-tag-version`; the latter reformats the whole
+   manifest, so revert everything but the version line if you use it.
+2. Move the `Unreleased` entries in `CHANGELOG.md` under a dated heading for
+   the new version, and add its `compare` link at the bottom.
+3. Commit, open a pull request, and merge it to `main`.
+4. Tag the merge commit on `main` and push the tag:
+
+   ```bash
+   git tag v0.2.1
+   git push origin v0.2.1
+   ```
+
+Marketplace validation takes a few minutes; `npx vsce show endoumame.herdr-vscode`
+reports the published state. Run the workflow from the Actions tab with *dry
+run* enabled to rehearse the whole thing without publishing.
+
+To release by hand instead — from a clean tree on `main`, logged in with
+`npx vsce login endoumame`:
+
+```bash
+npm run package        # -> herdr-vscode-<version>.vsix, runs the pre-publish checks
+npm run package:ls     # exactly what the VSIX will contain
+npm run publish
+gh release create v0.2.1 herdr-vscode-0.2.1.vsix --generate-notes
+```
 
 ## Contributing
 
