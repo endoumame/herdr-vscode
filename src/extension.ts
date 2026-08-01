@@ -60,12 +60,14 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('herdr.commentSelection', () =>
 			comments.commentOnSelection(),
 		),
-		vscode.commands.registerCommand('herdr.createComment', (reply: vscode.CommentReply) =>
+		// The reply argument is only there when the widget's own action runs the
+		// command; a keybinding passes nothing. `createComment` handles both.
+		vscode.commands.registerCommand('herdr.createComment', (reply?: vscode.CommentReply) =>
 			comments.createComment(reply),
 		),
 		vscode.commands.registerCommand(
 			'herdr.createAndSend',
-			async (reply: vscode.CommentReply) => {
+			async (reply?: vscode.CommentReply) => {
 				const queued = await comments.createComment(reply);
 				if (queued) {
 					await sender.sendAll();

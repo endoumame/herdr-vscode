@@ -105,7 +105,9 @@ shortcut skips that step, which is why it is the recommended route.
 
 Press **`Esc`** to close the comment editor. An edit in progress reverts to
 what is queued, a thread you opened but never filled disappears, and a thread
-that already holds comments collapses — nothing leaves the queue.
+that already holds comments collapses — nothing leaves the queue. In the
+widget VS Code opens for the gutter `+`, `Esc` stays VS Code's own: it closes
+that editor too, but asks first if you have typed something into it.
 
 Queued comments stay visible in the editor as collapsed threads. Use each
 comment's **Edit** and **Delete Comment** actions to revise or drop it. Once a
@@ -186,7 +188,16 @@ All commands are under the **herdr** category in the Command Palette
 | herdr: Show Log | |
 
 `Ctrl+Enter` (`Cmd+Enter`) queues the comment you are typing and `Esc` closes
-the editor. Both are active only while the herdr comment editor has focus.
+the editor. Both are active only while the comment editor has focus. `Enter`
+stays a newline, as it is everywhere else in a VS Code comment editor.
+
+`Ctrl+Enter` is VS Code's own shortcut for the comment widget: it runs the
+first action the widget offers, which is **Queue Comment** while writing and
+**Save** while editing a queued comment. That is why it is not listed as a
+herdr keybinding — an extension binding on the same key would win and arrive
+without the text you are typing, which is a thing no command can recover.
+Rebind it under *Keyboard Shortcuts* as `editor.action.submitComment` if you
+want it somewhere else.
 
 ## Settings
 
