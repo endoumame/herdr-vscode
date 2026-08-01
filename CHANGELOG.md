@@ -25,6 +25,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Marketplace badge URLs and the `code --install-extension` line in
   `README.md` now use the `endoumame` publisher, matching `package.json`.
 
+### Performance
+
+No behaviour changes; the payload the agent receives is byte for byte what it
+was, and every rewritten routine is pinned to its previous output by tests.
+
+- Commenting on a very large selection no longer reads the whole thing. Only
+  the lines the snippet keeps are pulled out of the document, and with
+  `herdr.snippetMaxLines` set to `0` the document is not opened at all. A
+  20,000-line selection now costs the same as a 40-line one.
+- The settings snapshot is read once and held until VS Code reports a `herdr.*`
+  change, instead of fourteen `getConfiguration` reads on every request for a
+  document's commenting ranges.
+- Repository-root discovery memoises its `realpath` calls and the git
+  extension's API handle, and resolves roots in parallel, so it no longer costs
+  a syscall per root per comment. A failed lookup is still retried.
+- Bracketed-paste wrapping is a single pass rather than a rescan per removal. A
+  payload carrying embedded terminators — pasted terminal output, typically —
+  no longer takes quadratic time.
+- The status bar skips its update, and the `herdr.queueNotEmpty` context key
+  its round trip to the workbench, when nothing they display has changed.
+- Diff-side detection compares URI components instead of serialising every open
+  tab's URIs, and the commenting range no longer materialises the last line of
+  the document just to measure it.
+- Agent-to-workspace matching normalises each root once per scan rather than
+  once per agent, and export text normalisation returns the original string
+  untouched when there is nothing to rewrite.
+
 ### Known issues
 
 - On a line long enough for VS Code to wrap it, the gutter `+` is drawn once

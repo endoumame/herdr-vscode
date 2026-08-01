@@ -21,20 +21,38 @@ export function applyDiffSide(uri: vscode.Uri, loc: ResolvedLocation): ResolvedL
 }
 
 function diffSideOf(uri: vscode.Uri): 'base' | 'head' | undefined {
-	const target = uri.toString();
 	for (const group of vscode.window.tabGroups.all) {
 		for (const tab of group.tabs) {
 			const input: unknown = tab.input;
 			if (!(input instanceof vscode.TabInputTextDiff)) {
 				continue;
 			}
-			if (input.original.toString() === target) {
+			if (sameUri(input.original, uri)) {
 				return 'base';
 			}
-			if (input.modified.toString() === target) {
+			if (sameUri(input.modified, uri)) {
 				return 'head';
 			}
 		}
 	}
 	return undefined;
+}
+
+/**
+ * Component-wise, rather than comparing `toString()` output.
+ *
+ * A `Uri`'s components are already normalised, so this decides the same
+ * question — but `toString()` percent-encodes the whole URI on every call, and
+ * this runs against both sides of every open diff tab. The scheme is checked
+ * first because it rules out most tabs in one comparison, and `query` carries
+ * the diff parameters, which are the longest part.
+ */
+function sameUri(a: vscode.Uri, b: vscode.Uri): boolean {
+	return (
+		a.scheme === b.scheme &&
+		a.path === b.path &&
+		a.authority === b.authority &&
+		a.fragment === b.fragment &&
+		a.query === b.query
+	);
 }

@@ -62,14 +62,16 @@ export class HerdrCommentController implements vscode.Disposable {
 	}
 
 	private commentingRanges(document: vscode.TextDocument): vscode.Range[] {
-		const schemes = getConfig().commentingSchemes;
 		// Return [] rather than undefined for unsupported schemes: undefined
 		// reads as "provider not ready" and gets retried.
-		if (!schemes.includes(document.uri.scheme) || document.lineCount === 0) {
+		if (!getConfig().commentingSchemes.has(document.uri.scheme) || document.lineCount === 0) {
 			return [];
 		}
+		// `validateRange` clamps to the real end of the document, which avoids
+		// materialising the last line's text just to measure it — that line can
+		// be a whole minified bundle, and this runs for every document opened.
 		const last = document.lineCount - 1;
-		return [new vscode.Range(0, 0, last, document.lineAt(last).text.length)];
+		return [document.validateRange(new vscode.Range(0, 0, last, Number.MAX_SAFE_INTEGER))];
 	}
 
 	/**

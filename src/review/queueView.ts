@@ -1,7 +1,11 @@
 import * as vscode from 'vscode';
 
+import { firstNonBlankLine } from '../util/text.js';
 import { formatLocation } from './export.js';
 import type { CommentQueue, QueuedComment } from './queue.js';
+
+/** How much of a comment body fits on one line of the tree. */
+const LABEL_MAX = 60;
 
 type Node = FileNode | CommentNode;
 
@@ -41,7 +45,7 @@ export class QueueTreeProvider implements vscode.TreeDataProvider<Node>, vscode.
 			comment.location.startLine === comment.location.endLine
 				? `${comment.location.startLine}`
 				: `${comment.location.startLine}-${comment.location.endLine}`;
-		const item = new vscode.TreeItem(`${span}: ${firstLine(comment.text)}`);
+		const item = new vscode.TreeItem(`${span}: ${firstNonBlankLine(comment.text, LABEL_MAX)}`);
 		item.iconPath = new vscode.ThemeIcon('comment');
 		item.tooltip = new vscode.MarkdownString(
 			`\`${formatLocation(comment.location)}\`\n\n${comment.text}`,
@@ -87,9 +91,4 @@ export class QueueTreeProvider implements vscode.TreeDataProvider<Node>, vscode.
 export function commentIdOf(node: unknown): string | undefined {
 	const candidate = node as { kind?: string; comment?: QueuedComment } | undefined;
 	return candidate?.kind === 'comment' ? candidate.comment?.id : undefined;
-}
-
-function firstLine(text: string): string {
-	const line = text.split('\n').find(l => l.trim().length > 0) ?? text;
-	return line.length > 60 ? `${line.slice(0, 60)}…` : line;
 }

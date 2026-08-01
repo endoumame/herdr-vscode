@@ -6,7 +6,7 @@ import { collectRoots } from '../util/git.js';
 import { applyDiffSide } from './diffSide.js';
 import { resolveLocation, type ResolvedLocation } from './location.js';
 import { nextCommentId, type QueuedComment } from './queue.js';
-import { buildSnippet } from './snippet.js';
+import { buildSnippet, snippetLinesToRead } from './snippet.js';
 
 /**
  * Turns an editor position into something sendable: a repository-relative
@@ -21,7 +21,7 @@ export class CaptureService {
 
 	async resolve(uri: vscode.Uri, range: vscode.Range): Promise<ResolvedLocation | null> {
 		this.harvestRoot(uri);
-		const roots = await collectRoots([...this.harvestedRoots]);
+		const roots = await collectRoots(this.harvestedRoots);
 		const loc = resolveLocation(uri, {
 			startLine: range.start.line,
 			endLine: range.end.line,
@@ -44,9 +44,14 @@ export class CaptureService {
 			return null;
 		}
 		const cfg = getConfig();
-		const snippet = buildSnippet(await this.readLines(uri, range), loc, {
+		// A selection can be arbitrarily long while the snippet keeps at most
+		// `snippetMaxLines` of it, so only that many lines are ever read; the
+		// span is reported separately for the elision marker's count.
+		const { lines, total } = await this.readLines(uri, range, snippetLinesToRead(cfg));
+		const snippet = buildSnippet(lines, loc, {
 			snippetPrefix: cfg.snippetPrefix,
 			snippetMaxLines: cfg.snippetMaxLines,
+			totalLines: total,
 		});
 		return {
 			id: nextCommentId(),
@@ -64,23 +69,35 @@ export class CaptureService {
 	}
 
 	/**
+	 * Read at most `limit` lines of the selection, and report how many it spans.
+	 *
 	 * Every scheme above is backed by a TextDocumentContentProvider, so this
 	 * works even for a PR whose blobs come off the network. If the provider
 	 * fails anyway, queue the comment with an empty snippet — a location plus a
-	 * body is far more useful than a lost comment.
+	 * body is far more useful than a lost comment. The span is reported as zero
+	 * in that case, so a failed read never produces a bare elision marker.
 	 */
-	private async readLines(uri: vscode.Uri, range: vscode.Range): Promise<string[]> {
+	private async readLines(
+		uri: vscode.Uri,
+		range: vscode.Range,
+		limit: number,
+	): Promise<{ lines: string[]; total: number }> {
+		if (limit <= 0) {
+			return { lines: [], total: 0 }; // snippets are off; no need to open anything
+		}
 		try {
 			const doc = await vscode.workspace.openTextDocument(uri);
 			const last = Math.min(range.end.line, doc.lineCount - 1);
-			const lines: string[] = [];
-			for (let line = range.start.line; line <= last; line++) {
-				lines.push(doc.lineAt(line).text);
+			const total = Math.max(0, last - range.start.line + 1);
+			const wanted = Math.min(total, limit);
+			const lines: string[] = new Array<string>(wanted);
+			for (let i = 0; i < wanted; i++) {
+				lines[i] = doc.lineAt(range.start.line + i).text;
 			}
-			return lines;
+			return { lines, total };
 		} catch (err) {
 			this.log.warn(`could not read ${uri.toString()} for a snippet: ${String(err)}`);
-			return [];
+			return { lines: [], total: 0 };
 		}
 	}
 
@@ -120,5 +137,9 @@ export function normalizeSelection(selection: vscode.Selection, document: vscode
 		endLine -= 1;
 	}
 	const clamped = Math.min(endLine, Math.max(0, document.lineCount - 1));
-	return new vscode.Range(start.line, 0, clamped, document.lineAt(clamped).text.length);
+	// `validateRange` clamps the end column for us, so the line's text never
+	// has to be materialised just to measure it.
+	return document.validateRange(
+		new vscode.Range(start.line, 0, clamped, Number.MAX_SAFE_INTEGER),
+	);
 }

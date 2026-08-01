@@ -17,17 +17,69 @@ export const PASTE_END = '\x1b[201~';
  * mechanism, so an ESC[201~ inside the payload would end the paste early and
  * leave the remainder to be interpreted as keystrokes.
  *
- * The removal loops rather than doing a single pass because stripping one
- * occurrence can splice a fresh one into existence — `"\x1b[20" + PASTE_END +
- * "1~"` collapses to exactly PASTE_END. reviewr's char-by-char scan has the
- * same property; `split().join()` would not.
+ * Stripping one occurrence can splice a fresh one into existence — `"\x1b[20" +
+ * PASTE_END + "1~"` collapses to exactly PASTE_END — so a single `split().join()`
+ * is not enough. Rescanning from the start after every removal is, but it
+ * rebuilds the whole payload each time: a review pasted out of a terminal can
+ * carry thousands of escape sequences, and at that point the quadratic cost is
+ * seconds of blocked extension host.
+ *
+ * Instead this is reviewr's char-by-char scan, done in one pass: append, and
+ * whenever the tail of the output has become a marker, drop it. PASTE_END has
+ * no proper border (its ESC never recurs), so removal is confluent and the
+ * result is identical to repeated leftmost removal.
  */
 export function wrapBracketedPaste(text: string): string {
-	let body = text;
-	while (body.includes(PASTE_END)) {
-		body = body.replace(PASTE_END, '');
+	// Overwhelmingly the common case, and it copies nothing.
+	if (!text.includes(PASTE_END)) {
+		return PASTE_START + text + PASTE_END;
 	}
-	return PASTE_START + body + PASTE_END;
+	return PASTE_START + stripTerminators(text) + PASTE_END;
+}
+
+/** PASTE_END is pure ASCII, so a code-unit scan can never split a surrogate pair. */
+const END_CODES: readonly number[] = Array.from(PASTE_END, c => c.charCodeAt(0));
+
+function stripTerminators(text: string): string {
+	// Two bytes per code unit and released as soon as the string is built —
+	// an array of one-character strings would cost an object apiece.
+	const kept = new Uint16Array(text.length);
+	const width = END_CODES.length;
+	const last = END_CODES[width - 1];
+	let length = 0;
+
+	for (let i = 0; i < text.length; i++) {
+		const code = text.charCodeAt(i);
+		kept[length++] = code;
+		if (code === last && length >= width && endsWithTerminator(kept, length, width)) {
+			length -= width;
+		}
+	}
+
+	return fromCodes(kept, length);
+}
+
+function endsWithTerminator(kept: Uint16Array, length: number, width: number): boolean {
+	// The trailing unit is already known to match; walk back from the one before.
+	for (let i = width - 2; i >= 0; i--) {
+		if (kept[length - width + i] !== END_CODES[i]) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/** `String.fromCharCode` takes its arguments on the stack, hence the chunking. */
+function fromCodes(codes: Uint16Array, length: number): string {
+	const CHUNK = 4096;
+	if (length <= CHUNK) {
+		return String.fromCharCode(...codes.subarray(0, length));
+	}
+	const parts: string[] = [];
+	for (let i = 0; i < length; i += CHUNK) {
+		parts.push(String.fromCharCode(...codes.subarray(i, Math.min(i + CHUNK, length))));
+	}
+	return parts.join('');
 }
 
 /**
@@ -46,12 +98,22 @@ export function withTrailingNewline(text: string): string {
 	return text.endsWith('\n') ? text : text + '\n';
 }
 
-/** Strip paste markers so a payload can be logged readably. */
+/**
+ * Strip paste markers so a payload can be logged readably.
+ *
+ * Both of these run over the whole payload on every send purely to produce a
+ * debug line, so each step is skipped outright when there is nothing to do.
+ */
 export function stripPasteMarkers(text: string): string {
-	return text.split(PASTE_START).join('').split(PASTE_END).join('');
+	let out = text.includes(PASTE_START) ? text.replaceAll(PASTE_START, '') : text;
+	if (out.includes(PASTE_END)) {
+		out = out.replaceAll(PASTE_END, '');
+	}
+	return out;
 }
 
 /** Render control characters visibly, for the output channel. */
 export function forLog(text: string): string {
-	return stripPasteMarkers(text).replace(/\x1b/g, '<ESC>');
+	const stripped = stripPasteMarkers(text);
+	return stripped.indexOf('\x1b') === -1 ? stripped : stripped.replaceAll('\x1b', '<ESC>');
 }

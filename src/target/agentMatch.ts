@@ -1,3 +1,5 @@
+import { toPosix } from '../util/text.js';
+
 import type { HerdrAgent } from '../herdr/types.js';
 
 /**
@@ -33,13 +35,27 @@ export function scoreAgents(
 	agents: readonly HerdrAgent[],
 	roots: readonly string[],
 ): Candidate[] {
+	// Normalised once for the whole scan rather than once per agent, and paired
+	// with the original so `matchedRoot` still reports what the caller passed in.
+	const normalizedRoots: { readonly raw: string; readonly normalized: string }[] = [];
+	for (const raw of roots) {
+		const normalized = normalize(raw);
+		if (normalized) {
+			normalizedRoots.push({ raw, normalized });
+		}
+	}
+
 	return agents
 		.map(agent => {
 			let best: Candidate = { agent, quality: 'none' };
-			for (const root of roots) {
-				const quality = compare(agent.cwd, root);
+			const cwd = agent.cwd ? normalize(agent.cwd) : '';
+			if (!cwd) {
+				return best;
+			}
+			for (const root of normalizedRoots) {
+				const quality = compare(cwd, root.normalized);
 				if (RANK[quality] > RANK[best.quality]) {
-					best = { agent, quality, matchedRoot: root };
+					best = { agent, quality, matchedRoot: root.raw };
 				}
 			}
 			return best;
@@ -49,29 +65,27 @@ export function scoreAgents(
 		);
 }
 
-function compare(cwd: string | undefined, root: string): MatchQuality {
-	if (!cwd) {
-		return 'none';
-	}
-	const a = normalize(cwd);
-	const b = normalize(root);
-	if (!a || !b) {
-		return 'none';
-	}
-	if (a === b) {
+/** Both arguments are already normalised and non-empty. */
+function compare(cwd: string, root: string): MatchQuality {
+	if (cwd === root) {
 		return 'exact';
 	}
-	if (a.startsWith(b + '/')) {
+	if (cwd.startsWith(root + '/')) {
 		return 'agent-under-root'; // agent started in a subdirectory of the repo
 	}
-	if (b.startsWith(a + '/')) {
+	if (root.startsWith(cwd + '/')) {
 		return 'root-under-agent'; // agent started at a parent, e.g. a monorepo root
 	}
 	return 'none';
 }
 
 function normalize(p: string): string {
-	return p.split('\\').join('/').replace(/\/+$/, '');
+	const posix = toPosix(p);
+	let end = posix.length;
+	while (end > 0 && posix.charCodeAt(end - 1) === 47) {
+		end--;
+	}
+	return end === posix.length ? posix : posix.slice(0, end);
 }
 
 /** True when no agent reports a cwd at all, i.e. herdr is older than 0.7.5. */
