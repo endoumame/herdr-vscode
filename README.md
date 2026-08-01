@@ -294,8 +294,8 @@ rather than shipping the wrong version.
 4. Tag the merge commit on `main` and push the tag:
 
    ```bash
-   git tag v0.2.1
-   git push origin v0.2.1
+   git tag v0.2.2
+   git push origin v0.2.2
    ```
 
 Marketplace validation takes a few minutes; `npx vsce show endoumame.herdr-vscode`
@@ -309,7 +309,7 @@ To release by hand instead — from a clean tree on `main`, logged in with
 npm run package        # -> herdr-vscode-<version>.vsix, runs the pre-publish checks
 npm run package:ls     # exactly what the VSIX will contain
 npm run publish
-gh release create v0.2.1 herdr-vscode-0.2.1.vsix --generate-notes
+gh release create v0.2.2 herdr-vscode-0.2.2.vsix --generate-notes
 ```
 
 ## Contributing
