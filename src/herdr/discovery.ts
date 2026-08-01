@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import { HerdrNotFoundError } from './errors.js';
+import { memoize } from '../util/memo.js';
 import { expandHome, isExecutable } from '../util/paths.js';
 
 /**
@@ -146,7 +147,18 @@ function runQuiet(file: string, args: string[], timeout: number): Promise<string
 	});
 }
 
-/** Directories to prepend to the child's PATH, since herdr may shell out itself. */
-export function extraPathDirs(): string[] {
-	return CANDIDATE_DIRS.map(expandHome).filter(dir => dir !== os.homedir());
+/**
+ * Directories to prepend to the child's PATH, since herdr may shell out itself.
+ *
+ * Computed once: the candidate list is a module constant and the home directory
+ * does not move, so redoing eight `path.join`s and an `os.homedir()` on every
+ * `herdr` invocation buys nothing.
+ */
+const candidates = memoize<readonly string[]>(() => {
+	const home = os.homedir();
+	return CANDIDATE_DIRS.map(expandHome).filter(dir => dir !== home);
+});
+
+export function extraPathDirs(): readonly string[] {
+	return candidates.get();
 }

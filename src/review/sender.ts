@@ -50,8 +50,9 @@ export class Sender {
 		const cfg = getConfig();
 		const payload = exportWithPreamble(items, cfg.preamble);
 
-		if (Buffer.byteLength(payload, 'utf8') > LARGE_PAYLOAD_WARN) {
-			const kb = Math.round(Buffer.byteLength(payload, 'utf8') / 1024);
+		const payloadBytes = Buffer.byteLength(payload, 'utf8');
+		if (payloadBytes > LARGE_PAYLOAD_WARN) {
+			const kb = Math.round(payloadBytes / 1024);
 			const choice = await vscode.window.showWarningMessage(
 				`herdr: this payload is ${kb} KB and may exceed the operating system's argument size limit.`,
 				'Send Anyway',

@@ -11,6 +11,8 @@
  * `unknown` fallback, never throw in the user's face.
  */
 
+import { toPosix } from '../util/text.js';
+
 /** Structural stand-in for `vscode.Uri`, so this module stays vscode-free. */
 export interface UriLike {
 	readonly scheme: string;
@@ -147,7 +149,7 @@ function fallback(
 	// Only a `file:` URI's path is a real filesystem path worth keeping absolute
 	// when it sits outside every root. For the virtual schemes the path is
 	// already repository-relative bar a leading slash.
-	const path = uri.scheme === 'file' ? relative : relative.replace(/^\/+/, '');
+	const path = uri.scheme === 'file' ? relative : dropLeadingSlashes(relative);
 	return { path, isBaseSide: false, kind: 'unknown' };
 }
 
@@ -167,12 +169,24 @@ function str(value: unknown): string | undefined {
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-export function toPosix(p: string): string {
-	return p.split('\\').join('/');
+function stripLeadingSlash(p: string): string {
+	return dropLeadingSlashes(toPosix(p));
 }
 
-function stripLeadingSlash(p: string): string {
-	return toPosix(p).replace(/^\/+/, '');
+function dropLeadingSlashes(p: string): string {
+	let i = 0;
+	while (i < p.length && p.charCodeAt(i) === 47) {
+		i++;
+	}
+	return i === 0 ? p : p.slice(i);
+}
+
+function dropTrailingSlashes(p: string): string {
+	let end = p.length;
+	while (end > 0 && p.charCodeAt(end - 1) === 47) {
+		end--;
+	}
+	return end === p.length ? p : p.slice(0, end);
 }
 
 /**
@@ -184,7 +198,7 @@ export function relativeToRoots(filePath: string, roots: readonly string[]): str
 	const target = toPosix(filePath);
 	let best: string | undefined;
 	for (const root of roots) {
-		const normalized = toPosix(root).replace(/\/+$/, '');
+		const normalized = dropTrailingSlashes(toPosix(root));
 		if (!normalized) {
 			continue;
 		}

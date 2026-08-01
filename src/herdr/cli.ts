@@ -131,7 +131,39 @@ function buildEnv(cfg: CliSettings): NodeJS.ProcessEnv {
 	if (cfg.session.trim()) {
 		env['HERDR_SESSION'] = cfg.session.trim();
 	}
-	const parts = [...extraPathDirs(), ...(env['PATH'] ?? '').split(path.delimiter)];
-	env['PATH'] = [...new Set(parts.filter(Boolean))].join(path.delimiter);
+	env['PATH'] = childPath(env['PATH'] ?? '');
 	return env;
+}
+
+/**
+ * The prepended directories and the inherited PATH are both fixed for the life
+ * of the extension host, so the composed value is computed once and replayed.
+ * The inherited value is still keyed on, so a host that does mutate its own
+ * environment is not served a stale PATH.
+ */
+let composedFor: string | undefined;
+let composed = '';
+
+function childPath(inherited: string): string {
+	if (composedFor !== inherited) {
+		composed = composeChildPath(extraPathDirs(), inherited);
+		composedFor = inherited;
+	}
+	return composed;
+}
+
+/** Candidate directories first, then the inherited entries, duplicates dropped. */
+export function composeChildPath(extra: readonly string[], inherited: string): string {
+	const seen = new Set<string>();
+	for (const dir of extra) {
+		if (dir) {
+			seen.add(dir);
+		}
+	}
+	for (const dir of inherited.split(path.delimiter)) {
+		if (dir) {
+			seen.add(dir);
+		}
+	}
+	return [...seen].join(path.delimiter);
 }

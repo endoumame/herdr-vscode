@@ -69,6 +69,34 @@ test('ranking is stable by pane id within a quality band', () => {
 	assert.deepEqual(ranked.map(c => c.agent.paneId), ['a', 'b']);
 });
 
+test('a root that normalises to nothing never matches', () => {
+	// '/' and '' both reduce to the empty string once trailing slashes go.
+	assert.equal(scoreAgents([agent('1', '/home/me/repo')], ['/'])[0]?.quality, 'none');
+	assert.equal(scoreAgents([agent('1', '/home/me/repo')], [''])[0]?.quality, 'none');
+});
+
+test('an agent with an empty cwd never matches', () => {
+	assert.equal(scoreAgents([agent('1', '')], ['/home/me/repo'])[0]?.quality, 'none');
+});
+
+test('Windows separators are compared as POSIX paths', () => {
+	const ranked = scoreAgents([agent('1', 'C:\\repo\\src')], ['C:/repo']);
+	assert.equal(ranked[0]?.quality, 'agent-under-root');
+});
+
+test('scoring many agents against many roots stays proportional', () => {
+	// Normalising each root once per agent turns this into O(agents x roots)
+	// string rewrites for an answer that only needs O(roots) of them.
+	const agents = Array.from({ length: 400 }, (_, i) => agent(`p${i}`, `/home/me/repo/${i % 7}`));
+	const roots = Array.from({ length: 60 }, (_, i) => `/home/me/repo/${i}/`);
+	const started = process.hrtime.bigint();
+	const ranked = scoreAgents(agents, roots);
+	const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
+	assert.equal(ranked.length, 400);
+	assert.equal(ranked[0]?.quality, 'exact');
+	assert.equal(elapsedMs < 250, true, `scoreAgents took ${elapsedMs.toFixed(1)}ms`);
+});
+
 test('detects a herdr build that predates cwd reporting', () => {
 	assert.equal(lacksCwdSupport([agent('1'), agent('2')]), true);
 	assert.equal(lacksCwdSupport([agent('1'), agent('2', '/x')]), false);

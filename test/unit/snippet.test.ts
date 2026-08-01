@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildSnippet } from '../../src/review/snippet.js';
+import { buildSnippet, snippetLinesToRead } from '../../src/review/snippet.js';
 
 const OPTS = { snippetPrefix: 'auto' as const, snippetMaxLines: 40 };
 
@@ -75,4 +75,58 @@ test('none mode strips prefixes even on a diff', () => {
 		snippetMaxLines: 40,
 	});
 	assert.deepEqual(out, ['a']);
+});
+
+test('totalLines lets the caller pass only the lines that survive truncation', () => {
+	// Reading a 100k-line selection to keep 2 lines of it is the waste this
+	// avoids: the caller reads maxLines and reports how many there really were.
+	const out = buildSnippet(['1', '2'], { kind: 'diff', isBaseSide: false }, {
+		snippetPrefix: 'auto',
+		snippetMaxLines: 2,
+		totalLines: 5,
+	});
+	assert.deepEqual(out, ['+1', '+2', '+... (3 more lines omitted)']);
+});
+
+test('a pre-truncated read matches what the full read would have produced', () => {
+	const all = ['1', '2', '3', '4', '5'];
+	const opts = { snippetPrefix: 'auto' as const, snippetMaxLines: 3 };
+	assert.deepEqual(
+		buildSnippet(all.slice(0, 3), { kind: 'diff', isBaseSide: false }, { ...opts, totalLines: 5 }),
+		buildSnippet(all, { kind: 'diff', isBaseSide: false }, opts),
+	);
+});
+
+test('totalLines defaults to the number of lines handed in', () => {
+	const out = buildSnippet(['1', '2', '3'], { kind: 'file', isBaseSide: false }, {
+		snippetPrefix: 'none',
+		snippetMaxLines: 2,
+	});
+	assert.deepEqual(out, ['1', '2', '... (1 more line omitted)']);
+});
+
+test('a totalLines at or below the cap adds no elision marker', () => {
+	const out = buildSnippet(['1', '2'], { kind: 'file', isBaseSide: false }, {
+		snippetPrefix: 'none',
+		snippetMaxLines: 2,
+		totalLines: 2,
+	});
+	assert.deepEqual(out, ['1', '2']);
+});
+
+test('blank lines are dropped after truncation, not before', () => {
+	// Order matters: filtering first would pull later lines under the cap and
+	// change both the kept lines and the omitted count.
+	const out = buildSnippet(['a', '', 'b', 'c'], { kind: 'file', isBaseSide: false }, {
+		snippetPrefix: 'none',
+		snippetMaxLines: 3,
+	});
+	assert.deepEqual(out, ['a', 'b', '... (1 more line omitted)']);
+});
+
+test('snippetLinesToRead reports how many lines are worth reading', () => {
+	// 0 disables snippets entirely, so the document need not be opened at all.
+	assert.equal(snippetLinesToRead({ snippetMaxLines: 0 }), 0);
+	assert.equal(snippetLinesToRead({ snippetMaxLines: 40 }), 40);
+	assert.equal(snippetLinesToRead({ snippetMaxLines: -1 }), 0);
 });

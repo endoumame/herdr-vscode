@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { getConfig } from './config.js';
+import { getConfig, invalidateConfig, watchConfig } from './config.js';
 import { HerdrCli } from './herdr/cli.js';
 import { invalidateDiscoveryCache } from './herdr/discovery.js';
 import { describe, Logger } from './log.js';
@@ -43,9 +43,15 @@ export function activate(context: vscode.ExtensionContext): void {
 		target,
 		vscode.window.registerTreeDataProvider('herdr.queue', tree),
 
+		// The settings snapshot is read once and reused until VS Code says a
+		// `herdr.*` key changed; without this every commenting-range request
+		// would re-read fourteen keys.
+		watchConfig(),
+
 		// Binary discovery is memoised for the session; a changed path must retry.
 		vscode.workspace.onDidChangeConfiguration(e => {
 			if (e.affectsConfiguration('herdr.binPath')) {
+				invalidateConfig();
 				invalidateDiscoveryCache();
 				statusBar.setBinaryMissing(false);
 			}

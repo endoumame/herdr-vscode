@@ -12,6 +12,8 @@
  * preamble, header or footer.
  */
 
+import { normalizeLine } from '../util/text.js';
+
 export interface ExportLocation {
 	/** Repository-relative, POSIX separators. */
 	path: string;
@@ -35,13 +37,60 @@ export interface ExportableComment {
  * Dropping blank lines is load-bearing, not cosmetic — a blank line inside a
  * comment body would otherwise produce a "\n\n" that reads as the separator
  * between two comments, splitting one block into two malformed ones.
+ *
+ * A typed review comment is nearly always already in this form, so the text is
+ * scanned before anything is built: the common case returns the original string
+ * and allocates nothing at all, rather than paying for a split, a per-line
+ * split/join, a map, a filter and a join.
  */
 export function normalizeText(text: string): string {
-	return text
-		.split('\n')
-		.map(line => line.split('\r').join('').replace(/[ \t]+$/, ''))
-		.filter(line => line.length > 0)
-		.join('\n');
+	return isNormalized(text) ? text : rebuildNormalized(text);
+}
+
+const LF = 10;
+const CR = 13;
+const SPACE = 32;
+const TAB = 9;
+
+/** True when `rebuildNormalized` would hand back exactly what it was given. */
+function isNormalized(text: string): boolean {
+	let lineStart = 0;
+	// One past the end stands in for a final newline, so the last line is
+	// checked by the same branch as every other.
+	for (let i = 0; i <= text.length; i++) {
+		const code = i < text.length ? text.charCodeAt(i) : LF;
+		if (code === CR) {
+			return false;
+		}
+		if (code !== LF) {
+			continue;
+		}
+		if (i === lineStart) {
+			return false; // a blank line, including a trailing newline
+		}
+		const previous = text.charCodeAt(i - 1);
+		if (previous === SPACE || previous === TAB) {
+			return false;
+		}
+		lineStart = i + 1;
+	}
+	return true;
+}
+
+function rebuildNormalized(text: string): string {
+	const lines: string[] = [];
+	let start = 0;
+	for (;;) {
+		const newline = text.indexOf('\n', start);
+		const line = normalizeLine(newline === -1 ? text.slice(start) : text.slice(start, newline));
+		if (line.length > 0) {
+			lines.push(line);
+		}
+		if (newline === -1) {
+			return lines.join('\n');
+		}
+		start = newline + 1;
+	}
 }
 
 /** `path/to/file.py:40-41`, `file.rs:3`, `a.rs:38 (removed)` */

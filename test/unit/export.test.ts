@@ -67,6 +67,49 @@ test('normalizeText strips CRs, trailing whitespace and blank lines', () => {
 	assert.equal(normalizeText('a\r\n\r\n  \nb   \n\t\n c'), 'a\nb\n c');
 });
 
+test('normalizeText handles the degenerate inputs', () => {
+	assert.equal(normalizeText(''), '');
+	assert.equal(normalizeText('\n'), '');
+	assert.equal(normalizeText('\n\n\n'), '');
+	assert.equal(normalizeText('   \t  '), '');
+	assert.equal(normalizeText('one'), 'one');
+});
+
+test('normalizeText keeps leading whitespace and interior CR-free content', () => {
+	assert.equal(normalizeText('    indented'), '    indented');
+	assert.equal(normalizeText('a\rb'), 'ab');
+	assert.equal(normalizeText('a\nb\nc'), 'a\nb\nc');
+});
+
+test('normalizeText drops leading and trailing blank lines without leaving separators', () => {
+	assert.equal(normalizeText('\n\na\n\nb\n\n'), 'a\nb');
+	assert.equal(normalizeText('a\n').includes('\n'), false);
+});
+
+test('normalizeText matches the reference implementation on adversarial input', () => {
+	// The shipped version is a single pass; this is the obvious split/map/filter
+	// form it replaced, kept here as the oracle.
+	const reference = (text: string): string =>
+		text
+			.split('\n')
+			.map(line => line.split('\r').join('').replace(/[ \t]+$/, ''))
+			.filter(line => line.length > 0)
+			.join('\n');
+
+	const alphabet = ['a', ' ', '\t', '\n', '\r', '\r\n', '  \n', ' ', '\f', 'é', '\u{1f600}'];
+	let seed = 987654321;
+	const next = (): number => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+
+	for (let i = 0; i < 20_000; i++) {
+		let input = '';
+		const pieces = Math.floor(next() * 12);
+		for (let j = 0; j < pieces; j++) {
+			input += alphabet[Math.floor(next() * alphabet.length)];
+		}
+		assert.equal(normalizeText(input), reference(input), `input: ${JSON.stringify(input)}`);
+	}
+});
+
 test('a blank line inside a comment body cannot forge a block separator', () => {
 	const out = exportComments([comment('a.rs', 1, 1, ['+x'], 'first\n\nsecond')]);
 	assert.equal(out.split('\n\n').length, 1);
