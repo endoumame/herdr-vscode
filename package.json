@@ -2,7 +2,7 @@
   "name": "herdr-vscode",
   "displayName": "herdr Review",
   "description": "Write inline review comments in VS Code — on PR diffs or ordinary files — and send them to a running herdr agent.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "endoumame",
   "license": "MIT",
   "icon": "images/icon.png",

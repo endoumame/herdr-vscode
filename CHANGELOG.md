@@ -7,25 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-08-01
-
-### Added
-
-- `Esc` closes the comment editor while it has focus. An edit in progress
-  reverts, a thread opened but never filled disappears, and a thread holding
-  queued comments collapses — nothing leaves the queue.
-
-### Changed
-
-- The payload sent to the agent now ends with a newline, so consecutive sends
-  no longer run together on one line of the agent's input. It is inserted
-  inside the bracketed-paste markers, so it is still not the Enter that would
-  submit the review.
-- **Discard Thread** now appears in a thread's header only once that thread
-  holds more than one comment. On a single-comment thread it duplicated the
-  comment's own delete action, showing two trash cans for one comment.
-- The Marketplace badge URLs and the `code --install-extension` line in
-  `README.md` now use the `endoumame` publisher, matching `package.json`.
+## [0.2.1] - 2026-08-01
 
 ### Performance
 
@@ -53,6 +35,26 @@ was, and every rewritten routine is pinned to its previous output by tests.
 - Agent-to-workspace matching normalises each root once per scan rather than
   once per agent, and export text normalisation returns the original string
   untouched when there is nothing to rewrite.
+
+## [0.2.0] - 2026-08-01
+
+### Added
+
+- `Esc` closes the comment editor while it has focus. An edit in progress
+  reverts, a thread opened but never filled disappears, and a thread holding
+  queued comments collapses — nothing leaves the queue.
+
+### Changed
+
+- The payload sent to the agent now ends with a newline, so consecutive sends
+  no longer run together on one line of the agent's input. It is inserted
+  inside the bracketed-paste markers, so it is still not the Enter that would
+  submit the review.
+- **Discard Thread** now appears in a thread's header only once that thread
+  holds more than one comment. On a single-comment thread it duplicated the
+  comment's own delete action, showing two trash cans for one comment.
+- The Marketplace badge URLs and the `code --install-extension` line in
+  `README.md` now use the `endoumame` publisher, matching `package.json`.
 
 ### Known issues
 
@@ -86,6 +88,7 @@ First public release.
 - 14 settings under the `herdr.*` namespace, including `herdr.snippetPrefix`,
   `herdr.bracketedPaste`, `herdr.agentMatchStrategy` and `herdr.preamble`.
 
-[Unreleased]: https://github.com/endoumame/herdr-vscode/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/endoumame/herdr-vscode/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/endoumame/herdr-vscode/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/endoumame/herdr-vscode/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/endoumame/herdr-vscode/releases/tag/v0.1.0

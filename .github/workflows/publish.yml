@@ -4,7 +4,7 @@ name: Publish
 # attaches the VSIX to a GitHub release of the same name.
 #
 # Requires a repository secret named VSCE_PAT: an Azure DevOps personal access
-# token scoped to Marketplace > Manage. See "Publishing" in README.md.
+# token scoped to Marketplace > Manage. See "Releasing" in README.md.
 
 on:
   push:
