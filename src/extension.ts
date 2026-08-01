@@ -127,6 +127,7 @@ export function activate(context: vscode.ExtensionContext): void {
 			}
 		}),
 		vscode.commands.registerCommand('herdr.showLog', () => log.show()),
+		vscode.commands.registerCommand('herdr.closeCommentEditor', () => comments.closeEditors()),
 		vscode.commands.registerCommand('herdr.editComment', (c: vscode.Comment) =>
 			comments.editComment(c),
 		),

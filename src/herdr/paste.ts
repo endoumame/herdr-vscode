@@ -30,6 +30,22 @@ export function wrapBracketedPaste(text: string): string {
 	return PASTE_START + body + PASTE_END;
 }
 
+/**
+ * Terminate the payload with a newline.
+ *
+ * `pane send-text` leaves the agent's cursor wherever the text ended, so
+ * without this the next send starts on the same line as the previous one's
+ * last comment and the two run together.
+ *
+ * Callers must apply this *before* wrapping: inside the bracketed-paste
+ * markers a terminal inserts the newline literally, whereas a bare one is an
+ * Enter. With `herdr.bracketedPaste` set to `never` — which assumes herdr
+ * wraps server-side instead — that distinction is herdr's to make.
+ */
+export function withTrailingNewline(text: string): string {
+	return text.endsWith('\n') ? text : text + '\n';
+}
+
 /** Strip paste markers so a payload can be logged readably. */
 export function stripPasteMarkers(text: string): string {
 	return text.split(PASTE_START).join('').split(PASTE_END).join('');

@@ -142,6 +142,10 @@
       {
         "command": "herdr.revealComment",
         "title": "Reveal Comment"
+      },
+      {
+        "command": "herdr.closeCommentEditor",
+        "title": "Close Comment Editor"
       }
     ],
     "menus": {
@@ -154,7 +158,8 @@
         { "command": "herdr.cancelEditComment", "when": "false" },
         { "command": "herdr.deleteComment", "when": "false" },
         { "command": "herdr.deleteThread", "when": "false" },
-        { "command": "herdr.revealComment", "when": "false" }
+        { "command": "herdr.revealComment", "when": "false" },
+        { "command": "herdr.closeCommentEditor", "when": "false" }
       ],
       "comments/commentThread/context": [
         {
@@ -177,7 +182,7 @@
         {
           "command": "herdr.deleteThread",
           "group": "navigation@2",
-          "when": "commentController == herdr.review"
+          "when": "commentController == herdr.review && commentThread == herdr.threadMulti"
         }
       ],
       "comments/comment/title": [
@@ -289,6 +294,11 @@
         "command": "herdr.createComment",
         "key": "ctrl+enter",
         "mac": "cmd+enter",
+        "when": "commentEditorFocused && commentController == herdr.review"
+      },
+      {
+        "command": "herdr.closeCommentEditor",
+        "key": "escape",
         "when": "commentEditorFocused && commentController == herdr.review"
       }
     ],

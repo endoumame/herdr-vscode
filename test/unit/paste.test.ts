@@ -6,6 +6,7 @@ import {
 	PASTE_START,
 	forLog,
 	stripPasteMarkers,
+	withTrailingNewline,
 	wrapBracketedPaste,
 } from '../../src/herdr/paste.js';
 
@@ -45,4 +46,26 @@ test('preserves newlines so a multi-comment payload arrives intact', () => {
 test('stripPasteMarkers and forLog round-trip for display', () => {
 	assert.equal(stripPasteMarkers(wrapBracketedPaste('hi')), 'hi');
 	assert.equal(forLog(`\x1b[31mred`), '<ESC>[31mred');
+});
+
+test('terminates a payload with a newline', () => {
+	// Without it the next send continues on the same line as this one.
+	assert.equal(withTrailingNewline('a.rs:1\n+x\nfix this'), 'a.rs:1\n+x\nfix this\n');
+});
+
+test('does not stack newlines on a payload that already ends with one', () => {
+	assert.equal(withTrailingNewline('done\n'), 'done\n');
+});
+
+test('leaves interior blank lines alone', () => {
+	// The blank line between two comment blocks is the block separator.
+	assert.equal(withTrailingNewline('a.rs:1\none\n\nb.rs:2\ntwo'), 'a.rs:1\none\n\nb.rs:2\ntwo\n');
+});
+
+test('the newline belongs inside the paste markers', () => {
+	// Outside them a terminal reads it as Enter, which would submit the review
+	// instead of leaving it for the user to send.
+	const wrapped = wrapBracketedPaste(withTrailingNewline('fix this'));
+	assert.equal(wrapped, `${PASTE_START}fix this\n${PASTE_END}`);
+	assert.equal(wrapped.endsWith(PASTE_END), true);
 });

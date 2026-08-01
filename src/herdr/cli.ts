@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import * as path from 'node:path';
 
 import { HerdrCliError, HerdrNotFoundError, extractCliMessage } from './errors.js';
-import { forLog, wrapBracketedPaste } from './paste.js';
+import { forLog, withTrailingNewline, wrapBracketedPaste } from './paste.js';
 import { extraPathDirs, resolveHerdrBinary } from './discovery.js';
 import { parseAgentList, type HerdrAgent } from './types.js';
 import { expandHome } from '../util/paths.js';
@@ -39,7 +39,10 @@ export class HerdrCli {
 
 	async paneSendText(paneId: string, text: string): Promise<void> {
 		const cfg = this.settings();
-		const payload = cfg.bracketedPaste === 'always' ? wrapBracketedPaste(text) : text;
+		// Inside the markers, so the terminal takes it as a newline rather than
+		// as the Enter this extension promises never to press.
+		const body = withTrailingNewline(text);
+		const payload = cfg.bracketedPaste === 'always' ? wrapBracketedPaste(body) : body;
 		this.log.debug(
 			`pane send-text ${paneId} (${Buffer.byteLength(payload, 'utf8')} bytes)\n${forLog(payload)}`,
 		);
