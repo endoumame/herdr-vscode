@@ -285,6 +285,11 @@ creates the GitHub release with the VSIX attached and generated notes. The tag
 must match `version` in `package.json` — the workflow fails on a mismatch
 rather than shipping the wrong version.
 
+Publishing a version the Marketplace already holds is reported and passed over
+rather than failed, so tagging a version released by hand still works, and the
+GitHub release is created whenever the VSIX built — it does not depend on the
+Marketplace upload succeeding.
+
 1. Bump `version` in `package.json` and `package-lock.json`. Do this by hand or
    with `npm version <ver> --no-git-tag-version`; the latter reformats the whole
    manifest, so revert everything but the version line if you use it.

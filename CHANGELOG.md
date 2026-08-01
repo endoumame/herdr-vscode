@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The release workflow creates the GitHub release even when the Marketplace
+  upload does not happen, and treats "already exists" as the state the tag
+  asked for rather than an error. Publishing 0.2.1 by hand and then pushing its
+  tag aborted the job at the upload, so that release was never created. Only
+  the workflow changes; the extension is untouched.
+
 ## [0.2.2] - 2026-08-01
 
 ### Fixed

@@ -51,16 +51,37 @@ jobs:
           fi
 
       - name: Package
+        id: package
         run: npm run package
 
+      # Republishing a version the Marketplace already holds is the state the
+      # tag asks for, so it is reported and passed over. Every other failure
+      # still fails the step. A hand-published version followed by its tag —
+      # which is how v0.2.1 went out — used to abort the job here.
       - name: Publish to the Visual Studio Marketplace
         if: startsWith(github.ref, 'refs/tags/v') && inputs.dry_run != true
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx vsce publish --packagePath *.vsix
+        run: |
+          # tee would otherwise report its own exit status and swallow a
+          # failed publish entirely; the default shell here is `bash -e`.
+          set -o pipefail
+          log="$RUNNER_TEMP/vsce-publish.log"
+          if npx vsce publish --packagePath *.vsix 2>&1 | tee "$log"; then
+            exit 0
+          fi
+          if grep -qF 'already exists' "$log"; then
+            echo "::notice::${GITHUB_REF_NAME} is already on the Marketplace; nothing to publish"
+            exit 0
+          fi
+          exit 1
 
+      # The release is a record of the tag and the artifact it built, which
+      # holds whether or not the Marketplace accepted the upload. Gating it on
+      # the publish step is why v0.2.1 has no release. It is still gated on
+      # Package, because without a VSIX there is nothing to attach.
       - name: Attach the VSIX to a GitHub release
-        if: startsWith(github.ref, 'refs/tags/v') && inputs.dry_run != true
+        if: ${{ !cancelled() && steps.package.outcome == 'success' && startsWith(github.ref, 'refs/tags/v') && inputs.dry_run != true }}
         uses: softprops/action-gh-release@v2
         with:
           files: '*.vsix'
