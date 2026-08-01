@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `Esc` now closes the comment editor for real. Since VS Code 1.96 the
+  extension host drops a `collapsibleState` write that matches the value it
+  last saw, and it is never told when the user re-opens a widget by hand, so on
+  every thread that already held a queued comment — which is every thread, once
+  it has been queued — the collapse was a silent no-op. Queueing a second
+  comment into an open thread left the widget open for the same reason.
+- `Esc` in the comment widget VS Code opens for the gutter `+` works again.
+  That thread belongs to the workbench and is never handed to an extension, so
+  the herdr Escape binding, which outranks VS Code's, could only shadow a
+  handler that would have closed it. The binding is now gated on a herdr thread
+  being the one in front of you.
+- `Ctrl+Enter` (`Cmd+Enter`) queues the comment you are typing. A keybinding
+  invokes a command with no arguments, so the contributed binding reached
+  **Queue Comment** without the text and failed every time — while shadowing
+  `editor.action.submitComment`, VS Code's own comment-widget shortcut, which
+  is the only thing that can pass that text along. The binding is gone and the
+  built-in does the work. Invoking **Queue Comment** from a keybinding of your
+  own now hands off to it rather than failing.
+- `Ctrl+Enter` while editing a queued comment saves it. It ran the first action
+  in the comment's menu, which was **Cancel**, so the edit was discarded.
+  **Save** now comes first, and is the primary button in that editor.
+
 ## [0.2.1] - 2026-08-01
 
 ### Performance

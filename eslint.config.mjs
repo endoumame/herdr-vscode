@@ -14,6 +14,7 @@ const PURE_MODULES = [
 	'src/review/location.ts',
 	'src/review/snippet.ts',
 	'src/review/export.ts',
+	'src/review/threadContext.ts',
 ];
 
 export default [
