@@ -1,14 +1,13 @@
 /**
- * The `contextValue` this extension puts on every comment thread it owns, and
- * the pattern that recognises them in a `when` clause.
+ * The `contextValue` this extension puts on every comment thread it owns.
  *
- * A thread's contextValue is the only thing a keybinding can use to tell a
- * herdr comment editor apart from the one VS Code opens for the gutter `+`.
- * That widget is a *template* thread: VS Code creates it in the workbench and
- * only hands it to the reply command once the user submits, so this extension
- * has no reference to it and cannot close it. Escape must reach VS Code's own
- * handler in that case, which is what `THREAD_CONTEXT_PATTERN` in the keybinding
- * arranges.
+ * VS Code exposes it to `when` clauses as the `commentThread` context key,
+ * which is how the thread title menu tells the two shapes apart.
+ *
+ * It deliberately drives no keybinding. A contributed keybinding is registered
+ * at `ExternalExtension` weight and outranks everything VS Code binds inside a
+ * comment widget, so gating one on a herdr thread does not make it work — it
+ * only decides whose widget loses its built-in shortcut. See `closeEditors`.
  *
  * Kept free of `vscode` imports so the contribution tests can check the
  * `package.json` clauses against the real values.
@@ -22,10 +21,3 @@ export const THREAD_SINGLE = 'herdr.thread';
  * "Discard Thread" action in its header.
  */
 export const THREAD_MULTI = 'herdr.threadMulti';
-
-/**
- * Source of the regular expression used as `commentThread =~ /…/` in the
- * Escape keybinding. Matches both values above and nothing VS Code or another
- * extension produces.
- */
-export const THREAD_CONTEXT_PATTERN = '^herdr\\.';

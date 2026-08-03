@@ -103,11 +103,14 @@ extension and the GitHub Pull Requests extension offer a comment provider
 there, so VS Code will ask which one you meant — pick **herdr**. The keyboard
 shortcut skips that step, which is why it is the recommended route.
 
-Press **`Esc`** to close the comment editor. An edit in progress reverts to
-what is queued, a thread you opened but never filled disappears, and a thread
-that already holds comments collapses — nothing leaves the queue. In the
-widget VS Code opens for the gutter `+`, `Esc` stays VS Code's own: it closes
-that editor too, but asks first if you have typed something into it.
+Press **`Esc`** to close the comment editor. This is VS Code's own shortcut,
+not a herdr one, and it behaves the same however the widget was opened: a
+thread you opened but never filled disappears, and a thread that already holds
+comments collapses. Nothing leaves the queue.
+
+If you have typed something into the editor, `Esc` asks before discarding it.
+Set `comments.thread.confirmOnCollapse` to `never` to close without the
+prompt — it is a VS Code setting and applies to every commenting extension.
 
 Queued comments stay visible in the editor as collapsed threads. Use each
 comment's **Edit** and **Delete Comment** actions to revise or drop it. Once a
@@ -188,16 +191,24 @@ All commands are under the **herdr** category in the Command Palette
 | herdr: Show Log | |
 
 `Ctrl+Enter` (`Cmd+Enter`) queues the comment you are typing and `Esc` closes
-the editor. Both are active only while the comment editor has focus. `Enter`
-stays a newline, as it is everywhere else in a VS Code comment editor.
+the editor. Neither is listed above, because both are VS Code's own shortcuts
+for its comment widget rather than herdr keybindings. `Enter` stays a newline,
+as it is everywhere else in a VS Code comment editor.
 
-`Ctrl+Enter` is VS Code's own shortcut for the comment widget: it runs the
-first action the widget offers, which is **Queue Comment** while writing and
-**Save** while editing a queued comment. That is why it is not listed as a
-herdr keybinding — an extension binding on the same key would win and arrive
-without the text you are typing, which is a thing no command can recover.
-Rebind it under *Keyboard Shortcuts* as `editor.action.submitComment` if you
-want it somewhere else.
+VS Code registers those two inside the widget, and an extension keybinding on
+the same key does not run alongside such a rule — it outranks it and takes its
+place. `Ctrl+Enter` runs the first action the widget offers, which is **Queue
+Comment** while writing and **Save** while editing a queued comment; a herdr
+binding would arrive without the text you are typing, which is a thing no
+command can recover. `Esc` runs `workbench.action.hideComment`, which reaches
+the widget you are actually in; a herdr binding gets no argument at all and can
+only guess. Rebind either under *Keyboard Shortcuts*, as
+`editor.action.submitComment` and `workbench.action.hideComment`, if you want
+them somewhere else.
+
+**herdr: Close Comment Editor** is a blunter instrument that closes every
+comment editor this extension owns at once. It ships unbound; bind it yourself
+if that is what you want.
 
 ## Settings
 
