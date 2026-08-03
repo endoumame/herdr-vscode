@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `Esc` closes the comment editor while you are typing in it. It closed only
+  when focus was on the widget around the editor, and the split says why: the
+  herdr binding was gated on `commentEditorFocused`, so it matched in the one
+  case it broke and stood aside in the one case that worked. A contributed
+  keybinding is registered at `ExternalExtension` weight, above the
+  `EditorContrib` weight of `workbench.action.hideComment`, so it never ran
+  next to VS Code's handler — it ran instead of it. What replaced it could not
+  do the same job: a command invoked from a keybinding gets no argument, and
+  nothing in the API names the thread you are typing in, so it walked every
+  thread it had a reference to and wrote through the extension host, where a
+  `collapsibleState` matching the last value is dropped. VS Code's handler
+  takes the widget straight from the focused editor and collapses it in the
+  workbench. The binding is gone and the built-in does the work, so `Esc` now
+  behaves the same however the widget was opened. **herdr: Close Comment
+  Editor** remains as an unbound command.
+
+  `Esc` now asks before discarding text you have typed, which is VS Code's
+  behaviour for every commenting extension. Set
+  `comments.thread.confirmOnCollapse` to `never` to close without the prompt.
+
 - The release workflow creates the GitHub release even when the Marketplace
   upload does not happen, and treats "already exists" as the state the tag
   asked for rather than an error. Publishing 0.2.1 by hand and then pushing its

@@ -186,19 +186,30 @@ export class HerdrCommentController implements vscode.Disposable {
 	}
 
 	/**
-	 * Escape while a herdr comment editor has focus.
+	 * Close every comment editor this extension owns. Bound to nothing by
+	 * default; Escape belongs to VS Code.
 	 *
-	 * VS Code gives the command no argument, and there is no context key for
-	 * "the thread you are typing in", so this closes every editor we own rather
-	 * than guessing. That is cheap and never destructive: an edit in progress
-	 * reverts to what is queued, a thread the shortcut opened but never filled
+	 * VS Code binds Escape in a comment widget to `workbench.action.hideComment`,
+	 * which reaches the widget through `getFocusedCodeEditor()` and collapses it
+	 * in the workbench — and deletes the thread outright when it holds no
+	 * comments. Nothing here can match that. A command invoked from a keybinding
+	 * gets no argument, and the API has no "the thread you are typing in", so
+	 * this walks every thread we track instead of the one in front of the user;
+	 * threads we never saw, such as the widget behind the gutter `+`, it cannot
+	 * reach at all. Its writes then go back through the extension host, where a
+	 * `collapsibleState` that matches the last value is dropped and the rest is
+	 * flushed on a 100ms debounce.
+	 *
+	 * A contributed keybinding is registered at `ExternalExtension` weight and
+	 * outranks the `EditorContrib` weight of VS Code's own, so binding Escape
+	 * here does not add this handler to that one — it replaces it. That is why
+	 * `package.json` binds no key to this command. Rebind it by hand if the
+	 * blanket close is what you want.
+	 *
+	 * What it does is cheap and never destructive: an edit in progress reverts
+	 * to what is queued, a thread the shortcut opened but never filled
 	 * disappears, and a thread with queued comments collapses. Nothing leaves
 	 * the queue.
-	 *
-	 * The keybinding is gated on a herdr thread being the one in front of the
-	 * user, so the widget VS Code opens for the gutter `+` — which this
-	 * extension never sees — keeps its own Escape rather than reaching a
-	 * handler that could not close it anyway.
 	 */
 	closeEditors(): void {
 		for (const thread of this.threadsById.values()) {
@@ -309,6 +320,19 @@ export class HerdrCommentController implements vscode.Disposable {
 		this.disposeAbandoned();
 	}
 
+	/**
+	 * Drop a thread the shortcut opened but never filled.
+	 *
+	 * VS Code gets there first whenever the widget is closed from the keyboard:
+	 * hiding a comment thread that holds no comments deletes it. Disposing it
+	 * again here sends a second delete for a handle the workbench has already
+	 * forgotten, which it answers with "unknown thread" in the extension host
+	 * log. Nothing reaches the user, and there is no way to ask a thread whether
+	 * it is still alive, so the log line stands.
+	 *
+	 * The case this still earns its place for is a widget the user walked away
+	 * from with the editor, which VS Code leaves open.
+	 */
 	private disposeAbandoned(): void {
 		for (const thread of this.pendingEmpty) {
 			if (thread.comments.length === 0) {

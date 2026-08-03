@@ -289,11 +289,6 @@
         "key": "ctrl+alt+enter",
         "mac": "cmd+alt+enter",
         "when": "herdr.queueNotEmpty && !terminalFocus"
-      },
-      {
-        "command": "herdr.closeCommentEditor",
-        "key": "escape",
-        "when": "commentEditorFocused && commentController == herdr.review && commentThread =~ /^herdr\\./"
       }
     ],
     "configuration": {

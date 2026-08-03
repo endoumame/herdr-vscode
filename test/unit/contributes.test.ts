@@ -3,12 +3,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
-import {
-	THREAD_CONTEXT_PATTERN,
-	THREAD_MULTI,
-	THREAD_SINGLE,
-} from '../../src/review/threadContext.js';
-
 /**
  * The comment widget is VS Code's, not ours, and most of what it does on the
  * keyboard is decided in `package.json` rather than in code. These check the
@@ -59,39 +53,31 @@ test('every contributed keybinding names a declared command', () => {
 	}
 });
 
-test('Escape only reaches this extension on a thread it owns', () => {
-	const escape = keybindings.filter(b => b.key === 'escape');
-	assert.equal(escape.length, 1);
-	const when = escape[0]!.when ?? '';
-
-	// Without the comment editor holding focus, Escape belongs to whatever else
-	// the user is doing.
-	assert.match(when, /\bcommentEditorFocused\b/);
-	assert.match(when, /\bcommentController == herdr\.review\b/);
-
-	// A thread this extension never created — the widget behind the gutter `+`
-	// — has no contextValue, and its Escape has to stay with VS Code, which is
-	// the only side that can close it.
-	const clause = /commentThread =~ \/(.+?)\//.exec(when);
-	assert.ok(clause, `no commentThread pattern in ${when}`);
-	const pattern = new RegExp(clause[1]!);
-	assert.equal(pattern.source, new RegExp(THREAD_CONTEXT_PATTERN).source);
-	assert.ok(pattern.test(THREAD_SINGLE));
-	assert.ok(pattern.test(THREAD_MULTI));
-	assert.ok(!pattern.test(''));
-	assert.ok(!pattern.test('github.pr.thread'));
+test('Escape stays with VS Code', () => {
+	// `workbench.action.hideComment` reaches the widget the user is actually in
+	// and collapses it in the workbench, deleting the thread when it holds no
+	// comments. A contributed binding is registered at `ExternalExtension`
+	// weight, above the `EditorContrib` weight of that rule, so binding Escape
+	// here does not run alongside it — it replaces it with a handler that gets
+	// no argument and can only guess which thread to close.
+	for (const binding of keybindings) {
+		for (const key of [binding.key, binding.mac ?? '']) {
+			assert.ok(!/\bescape\b/.test(key), `${binding.command} shadows ${key}`);
+		}
+	}
 });
 
-test('nothing shadows VS Code’s Ctrl+Enter inside a comment editor', () => {
+test('nothing shadows VS Code’s own keys inside a comment editor', () => {
 	// `editor.action.submitComment` is the only thing that can hand a comment
-	// command the text being typed; an extension binding on the same key wins
-	// on weight and arrives with no arguments at all.
+	// command the text being typed, and `workbench.action.hideComment` the only
+	// thing that can close the widget holding it. An extension binding on
+	// either key wins on weight and arrives with no arguments at all.
 	for (const binding of keybindings) {
 		if (!/\bcommentEditorFocused\b/.test(binding.when ?? '')) {
 			continue;
 		}
 		for (const key of [binding.key, binding.mac ?? '']) {
-			assert.ok(!/\benter\b/.test(key), `${binding.command} shadows ${key}`);
+			assert.ok(!/\b(enter|escape)\b/.test(key), `${binding.command} shadows ${key}`);
 		}
 	}
 });
