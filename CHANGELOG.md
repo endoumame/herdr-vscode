@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-08-03
+
 ### Fixed
 
 - `Esc` closes the comment editor while you are typing in it. It closed only
@@ -142,7 +144,8 @@ First public release.
 - 14 settings under the `herdr.*` namespace, including `herdr.snippetPrefix`,
   `herdr.bracketedPaste`, `herdr.agentMatchStrategy` and `herdr.preamble`.
 
-[Unreleased]: https://github.com/endoumame/herdr-vscode/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/endoumame/herdr-vscode/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/endoumame/herdr-vscode/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/endoumame/herdr-vscode/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/endoumame/herdr-vscode/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/endoumame/herdr-vscode/compare/v0.1.0...v0.2.0
